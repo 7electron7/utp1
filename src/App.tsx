@@ -81,9 +81,18 @@ export default function App() {
   };
 
   // Data update handlers
-  const handleDataLoaded = (newStudents: StudentRisk[]) => {
-    StorageService.saveStudents(newStudents);
+  const handleDataLoaded = (newStudents: StudentRisk[], mode: 'replace' | 'merge' = 'replace') => {
+    let finalStudents = newStudents;
+    if (mode === 'merge') {
+      const existing = StorageService.getStudents();
+      const map = new Map<string, StudentRisk>();
+      existing.forEach(s => map.set(s.id, s));
+      newStudents.forEach(s => map.set(s.id, s));
+      finalStudents = Array.from(map.values());
+    }
+    StorageService.saveStudents(finalStudents);
     setStudents(StorageService.getStudents());
+    setSelectedCourse('TODOS');
     setActiveTab('dashboard');
   };
 

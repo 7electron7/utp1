@@ -138,56 +138,45 @@ export function generateStudentId(name: string, course: string): string {
 }
 
 /**
- * Parses raw CSV content where subsequent rows for the same student have empty student/course cells
+ * Parses an array of 2D string/primitive rows into StudentRisk[]
  */
-export function parseRiskCSV(csvContent: string): StudentRisk[] {
-  // Normalize line endings
-  const lines = csvContent.split(/\r?\n/).filter(line => line.trim().length > 0);
-  if (lines.length < 2) return [];
+export function parseRawTableRows(rows: any[][]): StudentRisk[] {
+  if (!rows || rows.length < 2) return [];
 
   const studentsMap = new Map<string, StudentRisk>();
   let currentStudent: StudentRisk | null = null;
 
-  // Simple CSV line parser respecting quotes
-  function parseCSVLine(text: string): string[] {
-    const p: string[] = [];
-    let insideQuotes = false;
-    let token = '';
+  // Header detection
+  const header = rows[0].map(h => String(h || '').toLowerCase().trim());
+  
+  let estIdx = header.findIndex(h => h.includes('estudiant') || h.includes('alumn') || h.includes('nombre'));
+  let curIdx = header.findIndex(h => h.includes('curso') || h.includes('nivel') || h.includes('grado'));
+  let asigIdx = header.findIndex(h => h.includes('asignatura') || h.includes('insuficiente') || h.includes('materia') || h.includes('ramo'));
+  let notaIdx = header.findIndex(h => h.includes('nota') || h.includes('calificaci'));
+  let asistIdx = header.findIndex(h => h.includes('asistencia'));
+  let promIdx = header.findIndex(h => h.includes('promedio') || h.includes('prom'));
+  let alertIdx = header.findIndex(h => h.includes('alerta'));
 
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      if (char === '"') {
-        insideQuotes = !insideQuotes;
-      } else if (char === ',' && !insideQuotes) {
-        p.push(token.trim());
-        token = '';
-      } else {
-        token += char;
-      }
-    }
-    p.push(token.trim());
-    return p;
-  }
+  // Fallbacks if header names aren't recognized
+  if (estIdx === -1) estIdx = 0;
+  if (curIdx === -1) curIdx = 1;
+  if (asigIdx === -1) asigIdx = 2;
+  if (notaIdx === -1) notaIdx = 3;
+  if (asistIdx === -1) asistIdx = 4;
+  if (promIdx === -1) promIdx = 5;
+  if (alertIdx === -1) alertIdx = 6;
 
-  // Find header index
-  const header = parseCSVLine(lines[0]).map(h => h.toLowerCase());
-  const estIdx = header.findIndex(h => h.includes('estudiante') || h.includes('alumno'));
-  const curIdx = header.findIndex(h => h.includes('curso'));
-  const asigIdx = header.findIndex(h => h.includes('asignatura') || h.includes('insuficiente'));
-  const notaIdx = header.findIndex(h => h.includes('nota'));
-  const asistIdx = header.findIndex(h => h.includes('asistencia'));
-  const promIdx = header.findIndex(h => h.includes('promedio'));
-  const alertIdx = header.findIndex(h => h.includes('alerta'));
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length === 0) continue;
 
-  for (let i = 1; i < lines.length; i++) {
-    const row = parseCSVLine(lines[i]);
-    const studentName = (row[estIdx !== -1 ? estIdx : 0] || '').trim();
-    const course = (row[curIdx !== -1 ? curIdx : 1] || '').trim();
-    const subjectRaw = (row[asigIdx !== -1 ? asigIdx : 2] || '').trim();
-    const gradeRaw = row[notaIdx !== -1 ? notaIdx : 3] || '';
-    const attendanceRaw = row[asistIdx !== -1 ? asistIdx : 4] || '';
-    const avgRaw = row[promIdx !== -1 ? promIdx : 5] || '';
-    const alertRaw = (row[alertIdx !== -1 ? alertIdx : 6] || '').trim();
+    const studentName = String(row[estIdx] || '').trim();
+    const course = String(row[curIdx] || '').trim();
+    const subjectRaw = String(row[asigIdx] || '').trim();
+    const gradeRaw = row[notaIdx];
+    const attendanceRaw = row[asistIdx];
+    const avgRaw = row[promIdx];
+    const alertRaw = String(row[alertIdx] || '').trim();
 
     if (studentName) {
       const id = generateStudentId(studentName, course);
@@ -222,11 +211,10 @@ export function parseRiskCSV(csvContent: string): StudentRisk[] {
 
       studentsMap.set(id, currentStudent);
     } else if (currentStudent && subjectRaw && subjectRaw !== '-') {
-      // Continuation of previous student's subjects
+      // Continuation row for previous student's additional failing subjects
       const grade = parseGrade(gradeRaw);
       currentStudent.deficientSubjects.push({ name: subjectRaw, grade });
 
-      // Recompute risk level with updated subjects
       const { riskLevel, reasons } = computeRiskLevel(
         currentStudent.attendance,
         currentStudent.generalAverage,
@@ -241,7 +229,54 @@ export function parseRiskCSV(csvContent: string): StudentRisk[] {
 }
 
 /**
- * Parses XLSX / XLS / CSV from ArrayBuffer or File
+ * Splits CSV text line respecting quotes and delimiter (; or , or \t)
+ */
+function parseCSVLineWithDelimiter(text: string, delimiter: string): string[] {
+  const parts: string[] = [];
+  let insideQuotes = false;
+  let token = '';
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === delimiter && !insideQuotes) {
+      parts.push(token.trim());
+      token = '';
+    } else {
+      token += char;
+    }
+  }
+  parts.push(token.trim());
+  return parts;
+}
+
+/**
+ * Parses raw CSV content with auto-detection for delimiters (, or ; or \t)
+ */
+export function parseRiskCSV(csvContent: string): StudentRisk[] {
+  const lines = csvContent.split(/\r?\n/).filter(line => line.trim().length > 0);
+  if (lines.length < 2) return [];
+
+  // Detect delimiter from first non-empty line
+  const firstLine = lines[0];
+  const countComma = (firstLine.match(/,/g) || []).length;
+  const countSemicolon = (firstLine.match(/;/g) || []).length;
+  const countTab = (firstLine.match(/\t/g) || []).length;
+
+  let delimiter = ',';
+  if (countSemicolon > countComma && countSemicolon > countTab) {
+    delimiter = ';';
+  } else if (countTab > countComma && countTab > countSemicolon) {
+    delimiter = '\t';
+  }
+
+  const rows = lines.map(line => parseCSVLineWithDelimiter(line, delimiter));
+  return parseRawTableRows(rows);
+}
+
+/**
+ * Parses XLSX / XLS / CSV from ArrayBuffer or File using SheetJS
  */
 export async function parseExcelFile(file: File): Promise<StudentRisk[]> {
   const data = await file.arrayBuffer();
@@ -249,7 +284,14 @@ export async function parseExcelFile(file: File): Promise<StudentRisk[]> {
   const firstSheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[firstSheetName];
   
-  // Convert worksheet to CSV string and parse
+  // Directly convert to 2D array of primitives
+  const rawRows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+  
+  if (rawRows.length >= 2) {
+    return parseRawTableRows(rawRows);
+  }
+
+  // Fallback to sheet_to_csv
   const csvContent = XLSX.utils.sheet_to_csv(worksheet);
   return parseRiskCSV(csvContent);
 }

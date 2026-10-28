@@ -3,7 +3,7 @@ import { parseRiskCSV } from '../utils/parser';
 import { INITIAL_CSV_DATA } from '../data/rawInitialCsv';
 
 const STORAGE_KEYS = {
-  STUDENTS: 'sigeutp_students_data',
+  STUDENTS: 'sigeutp_students_data_v3',
   INTERVENTIONS: 'sigeutp_interventions_data',
   NOTES: 'sigeutp_notes_data',
 };
@@ -104,14 +104,7 @@ export const StorageService = {
       const stored = localStorage.getItem(STORAGE_KEYS.STUDENTS);
       if (stored) {
         const parsed = JSON.parse(stored) as StudentRisk[];
-        // Check if stored data already includes both Básica and Media
-        const hasBasica = parsed.some(
-          s => s.course.toLowerCase().includes('básico') || s.course.toLowerCase().includes('basico') || s.cycle === 'BÁSICA'
-        );
-        const hasMedia = parsed.some(
-          s => s.course.toLowerCase().includes('medio') || s.cycle === 'MEDIA'
-        );
-        if (hasBasica && hasMedia && parsed.length > 200) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return this.syncWithInterventions(parsed);
         }
       }
