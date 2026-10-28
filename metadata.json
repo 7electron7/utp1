@@ -1,0 +1,6 @@
+{
+  "name": "SigeUTP - Gestión y Monitoreo de Riesgo de Repitencia",
+  "description": "Plataforma UTP para monitoreo de alertas tempranas, gestión de riesgo de repitencia (Decreto 67), registro de intervenciones pedagógicas y reportes mensuales PDF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
