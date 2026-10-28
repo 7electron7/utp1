@@ -23,8 +23,9 @@ export interface StudentRisk {
   id: string;
   name: string;
   course: string;
-  level: string; // e.g., "1º Medio"
-  modality: 'TP' | 'HC';
+  cycle: 'BÁSICA' | 'MEDIA';
+  level: string; // e.g., "1º Básico", "8º Básico", "1º Medio", "4º Medio"
+  modality: 'TP' | 'HC' | 'Básica';
   attendance: number; // e.g. 80
   generalAverage: number; // e.g. 4.8
   rawAlert: AlertType | string;

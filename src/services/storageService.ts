@@ -64,6 +64,34 @@ const SEED_INTERVENTIONS: Intervention[] = [
     status: 'EN_CURSO',
     nextCheckDate: '2026-11-10',
     createdAt: '2026-10-22T11:45:00Z',
+  },
+  {
+    id: 'int-5',
+    studentId: 'villalobos_vergara_tomas_valentin_1_basico_a',
+    studentName: 'Villalobos Vergara Tomas Valentin',
+    course: '1º Básico A',
+    date: '2026-10-23',
+    type: 'DERIVACION_PSICOSOCIAL',
+    responsible: 'Profesor Jefe / Dupla Psicosocial',
+    description: 'Estudiante de 1º Básico en alerta crítica por 43% de asistencia y 5 asignaturas reprobadas (Lenguaje 2.7, Inglés 3.7, Matemática 3.9, Historia 3.6, Tecnología 3.7). Se coordina entrevista urgente con apoderado.',
+    agreements: 'Plan de nivelación en lectura y cálculo inicial. Compromiso de asistencia regular y evaluación fonoaudiológica.',
+    status: 'EN_CURSO',
+    nextCheckDate: '2026-11-06',
+    createdAt: '2026-10-23T08:30:00Z',
+  },
+  {
+    id: 'int-6',
+    studentId: 'altamirano_mejias_javier_esteban_8_basico_c',
+    studentName: 'Altamirano Mejias Javier Esteban',
+    course: '8º Básico C',
+    date: '2026-10-24',
+    type: 'REFORZAMIENTO_PEDAGOGICO',
+    responsible: 'Docente de Matemática / UTP',
+    description: 'Estudiante de 8º Básico con 6 asignaturas en riesgo de repitencia previa al egreso de enseñanza básica. Se genera plan de rescate académico.',
+    agreements: 'Asistencia obligatoria a talleres de nivelación de Matemática (nota 2.5) y Lenguaje (nota 2.9). Entrega de portafolio el 14 de noviembre.',
+    status: 'EN_CURSO',
+    nextCheckDate: '2026-11-14',
+    createdAt: '2026-10-24T11:00:00Z',
   }
 ];
 
@@ -76,7 +104,16 @@ export const StorageService = {
       const stored = localStorage.getItem(STORAGE_KEYS.STUDENTS);
       if (stored) {
         const parsed = JSON.parse(stored) as StudentRisk[];
-        return this.syncWithInterventions(parsed);
+        // Check if stored data already includes both Básica and Media
+        const hasBasica = parsed.some(
+          s => s.course.toLowerCase().includes('básico') || s.course.toLowerCase().includes('basico') || s.cycle === 'BÁSICA'
+        );
+        const hasMedia = parsed.some(
+          s => s.course.toLowerCase().includes('medio') || s.cycle === 'MEDIA'
+        );
+        if (hasBasica && hasMedia && parsed.length > 200) {
+          return this.syncWithInterventions(parsed);
+        }
       }
     } catch (e) {
       console.error('Error reading students from storage', e);

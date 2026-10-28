@@ -22,8 +22,9 @@ export interface DashboardStats {
 
 export interface CourseSummary {
   course: string;
+  cycle: 'BÁSICA' | 'MEDIA';
   level: string;
-  modality: 'TP' | 'HC';
+  modality: 'TP' | 'HC' | 'Básica';
   total: number;
   critical: number;
   high: number;
@@ -35,6 +36,22 @@ export interface CourseSummary {
   interventionsLogged: number;
   avgAttendance: number;
   avgGrade: number;
+}
+
+export function sortChileanCourses(a: string, b: string): number {
+  const isABasica = a.toLowerCase().includes('básico') || a.toLowerCase().includes('basico');
+  const isBBasica = b.toLowerCase().includes('básico') || b.toLowerCase().includes('basico');
+
+  if (isABasica && !isBBasica) return -1;
+  if (!isABasica && isBBasica) return 1;
+
+  // Extract level number
+  const numA = parseInt(a.match(/\d+/)?.[0] || '0', 10);
+  const numB = parseInt(b.match(/\d+/)?.[0] || '0', 10);
+
+  if (numA !== numB) return numA - numB;
+
+  return a.localeCompare(b, 'es');
 }
 
 export const AnalyticsService = {
@@ -266,6 +283,7 @@ export const AnalyticsService = {
       const total = courseStudents.length;
       summaries.push({
         course,
+        cycle: courseStudents[0]?.cycle || (course.toLowerCase().includes('básico') ? 'BÁSICA' : 'MEDIA'),
         level: courseStudents[0]?.level || '',
         modality: courseStudents[0]?.modality || 'HC',
         total,
@@ -282,8 +300,8 @@ export const AnalyticsService = {
       });
     });
 
-    // Natural sort: 1º Medio before 2º Medio, A before B, HC before TP, etc.
-    return summaries.sort((a, b) => a.course.localeCompare(b.course, 'es', { numeric: true }));
+    // Natural sort: 1º Básico through 8º Básico, then 1º Medio through 4º Medio
+    return summaries.sort((a, b) => sortChileanCourses(a.course, b.course));
   },
 
   /**

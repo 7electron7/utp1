@@ -463,7 +463,7 @@ export const PdfService = {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(71, 85, 105);
-    doc.text(`Curso: ${student.course} (${student.modality === 'TP' ? 'Técnico Profesional' : 'Humanista Científico'})`, 19, currentY + 15);
+    doc.text(`Curso: ${student.course} (${student.modality === 'TP' ? 'Técnico Profesional' : student.modality === 'HC' ? 'Humanista Científico' : 'Enseñanza Básica'})`, 19, currentY + 15);
     doc.text(`Asistencia Actual: ${student.attendance}% (Mínimo legal: 85%)`, 19, currentY + 21);
     doc.text(`Promedio General: ${student.generalAverage.toFixed(1)}`, 19, currentY + 27);
 

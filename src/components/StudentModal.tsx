@@ -171,7 +171,7 @@ export const StudentModal: React.FC<StudentModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Curso: <strong className="text-slate-200">{student.course}</strong> ({student.modality === 'TP' ? 'Técnico Profesional' : 'Humanista'})
+                Curso: <strong className="text-slate-200">{student.course}</strong> ({student.modality === 'TP' ? 'Técnico Profesional' : student.modality === 'HC' ? 'Humanista Científico' : 'Enseñanza Básica'})
               </p>
             </div>
           </div>

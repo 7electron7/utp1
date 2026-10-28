@@ -40,6 +40,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const courseSummaries = AnalyticsService.getCourseSummaries(students);
   const earlyWarningStudents = AnalyticsService.getEarlyWarningStudents(students).slice(0, 6);
 
+  const basicaStudents = students.filter(s => s.cycle === 'BÁSICA');
+  const mediaStudents = students.filter(s => s.cycle === 'MEDIA');
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner */}
@@ -51,13 +54,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="relative z-10 max-w-3xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold mb-3 border border-blue-400/30">
             <Sparkles className="w-3.5 h-3.5 text-blue-300" />
-            Unidad Técnico Pedagógica • Monitoreo Integral
+            Unidad Técnico Pedagógica • Monitoreo Integral (Básica y Media)
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Análisis y Gestión de Riesgo de Repitencia
           </h1>
           <p className="mt-2 text-sm sm:text-base text-slate-300 leading-relaxed">
-            Plataforma para la detección precoz de estudiantes con inasistencia crítica y reprobación de asignaturas según el <strong className="text-white">Decreto 67/2018</strong>. Monitorea alertas, activa protocolos de acompañamiento y genera reportes ejecutivos para el Consejo de Profesores.
+            Plataforma para la detección precoz de estudiantes con inasistencia crítica y reprobación de asignaturas según el <strong className="text-white">Decreto 67/2018</strong>. Integración unificada de <strong className="text-blue-300">Enseñanza Básica (1º a 8º)</strong> y <strong className="text-indigo-300">Enseñanza Media (1º a 4º HC/TP)</strong>.
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -76,6 +79,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Cycle Quick Switch & Distribution Banner */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div 
+          onClick={() => onNavigateTab('courses')}
+          className="bg-white rounded-xl p-4 border border-blue-200/80 shadow-2xs hover:shadow-xs transition cursor-pointer flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+              EB
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600">
+                Enseñanza Básica (1º a 8º Básico)
+              </h4>
+              <p className="text-xs text-slate-500">
+                {basicaStudents.length} alumnos monitoreados • {basicaStudents.filter(s => s.riskLevel === 'CRITICO').length} casos críticos
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">
+            Ver Básica &rarr;
+          </span>
+        </div>
+
+        <div 
+          onClick={() => onNavigateTab('courses')}
+          className="bg-white rounded-xl p-4 border border-indigo-200/80 shadow-2xs hover:shadow-xs transition cursor-pointer flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+              EM
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600">
+                Enseñanza Media (1º a 4º Medio HC/TP)
+              </h4>
+              <p className="text-xs text-slate-500">
+                {mediaStudents.length} alumnos monitoreados • {mediaStudents.filter(s => s.riskLevel === 'CRITICO').length} casos críticos
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg">
+            Ver Media &rarr;
+          </span>
         </div>
       </div>
 

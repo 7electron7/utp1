@@ -16,6 +16,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { StudentRisk, RiskLevel } from '../types';
+import { sortChileanCourses } from '../services/analyticsService';
 
 interface CourseViewProps {
   students: StudentRisk[];
@@ -37,6 +38,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
   initialRiskFilter = 'todos',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [cycleFilter, setCycleFilter] = useState<'TODOS' | 'BÁSICA' | 'MEDIA'>('TODOS');
   const [levelFilter, setLevelFilter] = useState<string>('TODOS');
   const [riskFilter, setRiskFilter] = useState<string>(
     initialRiskFilter === 'criticos' ? 'CRITICO' : 'TODOS'
@@ -54,20 +56,36 @@ export const CourseView: React.FC<CourseViewProps> = ({
   const [sortBy, setSortBy] = useState<'attendance' | 'grade' | 'subjects' | 'name'>('attendance');
   const [sortAsc, setSortAsc] = useState<boolean>(true);
 
-  // Available unique courses with student count
+  // Available unique courses with student count, sorted naturally
   const courseList = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { count: number; cycle: 'BÁSICA' | 'MEDIA' }>();
     for (const s of students) {
-      map.set(s.course, (map.get(s.course) || 0) + 1);
+      const existing = map.get(s.course);
+      if (existing) {
+        existing.count++;
+      } else {
+        map.set(s.course, { count: 1, cycle: s.cycle });
+      }
     }
     return Array.from(map.entries())
-      .map(([course, count]) => ({ course, count }))
-      .sort((a, b) => a.course.localeCompare(b.course, 'es', { numeric: true }));
+      .map(([course, data]) => ({ course, count: data.count, cycle: data.cycle }))
+      .sort((a, b) => sortChileanCourses(a.course, b.course));
   }, [students]);
+
+  // Filtered course list by cycle
+  const visibleCourseList = useMemo(() => {
+    if (cycleFilter === 'TODOS') return courseList;
+    return courseList.filter(c => c.cycle === cycleFilter);
+  }, [courseList, cycleFilter]);
 
   // Filtered students
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
+      // Cycle match
+      if (cycleFilter !== 'TODOS' && s.cycle !== cycleFilter) {
+        return false;
+      }
+
       // Course match
       if (selectedCourse !== 'TODOS' && s.course !== selectedCourse) {
         return false;
@@ -77,7 +95,8 @@ export const CourseView: React.FC<CourseViewProps> = ({
       if (levelFilter !== 'TODOS') {
         if (levelFilter === 'TP' && s.modality !== 'TP') return false;
         if (levelFilter === 'HC' && s.modality !== 'HC') return false;
-        if (levelFilter.includes('Medio') && s.level !== levelFilter) return false;
+        if (levelFilter === 'BÁSICA' && s.cycle !== 'BÁSICA') return false;
+        if ((levelFilter.includes('Básico') || levelFilter.includes('Medio')) && s.level !== levelFilter) return false;
       }
 
       // Risk level match
@@ -168,10 +187,73 @@ export const CourseView: React.FC<CourseViewProps> = ({
           )}
         </div>
 
+        {/* Cycle shortcuts */}
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+          <span className="text-slate-400 font-semibold text-xs mr-1">Ciclo:</span>
+          <button
+            onClick={() => {
+              setCycleFilter('TODOS');
+              setLevelFilter('TODOS');
+              setSelectedCourse('TODOS');
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              cycleFilter === 'TODOS'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <span>Todo el Colegio</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-700/30 text-current">
+              {students.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setCycleFilter('BÁSICA');
+              setLevelFilter('TODOS');
+              setSelectedCourse('TODOS');
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              cycleFilter === 'BÁSICA'
+                ? 'bg-blue-700 text-white shadow-xs'
+                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+            }`}
+          >
+            <span>Enseñanza Básica (1º - 8º)</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-200/60 text-blue-900 font-bold">
+              {students.filter(s => s.cycle === 'BÁSICA').length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setCycleFilter('MEDIA');
+              setLevelFilter('TODOS');
+              setSelectedCourse('TODOS');
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              cycleFilter === 'MEDIA'
+                ? 'bg-indigo-700 text-white shadow-xs'
+                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+            }`}
+          >
+            <span>Enseñanza Media (1º - 4º)</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-200/60 text-indigo-900 font-bold">
+              {students.filter(s => s.cycle === 'MEDIA').length}
+            </span>
+          </button>
+        </div>
+
         {/* Level shortcuts */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
           <span className="text-slate-400 font-medium mr-1 text-[11px]">Nivel:</span>
-          {['TODOS', '1º Medio', '2º Medio', '3º Medio', '4º Medio', 'TP', 'HC'].map((lvl) => (
+          {(cycleFilter === 'BÁSICA'
+            ? ['TODOS', '1º Básico', '2º Básico', '3º Básico', '4º Básico', '5º Básico', '6º Básico', '7º Básico', '8º Básico']
+            : cycleFilter === 'MEDIA'
+            ? ['TODOS', '1º Medio', '2º Medio', '3º Medio', '4º Medio', 'TP', 'HC']
+            : ['TODOS', 'BÁSICA', '1º Básico', '8º Básico', '1º Medio', '4º Medio', 'TP', 'HC']
+          ).map((lvl) => (
             <button
               key={lvl}
               onClick={() => setLevelFilter(lvl)}
@@ -181,7 +263,15 @@ export const CourseView: React.FC<CourseViewProps> = ({
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {lvl === 'TODOS' ? 'Todos los Niveles' : lvl === 'TP' ? 'Solo Técnico Prof.' : lvl === 'HC' ? 'Solo Humanista' : lvl}
+              {lvl === 'TODOS'
+                ? 'Todos los Niveles'
+                : lvl === 'BÁSICA'
+                ? 'Toda la Básica'
+                : lvl === 'TP'
+                ? 'Solo Técnico Prof.'
+                : lvl === 'HC'
+                ? 'Solo Humanista'
+                : lvl}
             </button>
           ))}
         </div>
@@ -196,15 +286,15 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <span>Todos los Cursos</span>
+            <span>{cycleFilter === 'BÁSICA' ? 'Todos de Básica' : cycleFilter === 'MEDIA' ? 'Todos de Media' : 'Todos los Cursos'}</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
               selectedCourse === 'TODOS' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-600'
             }`}>
-              {students.length}
+              {filteredStudents.length}
             </span>
           </button>
 
-          {courseList.map(({ course, count }) => {
+          {visibleCourseList.map(({ course, count }) => {
             const isSelected = selectedCourse === course;
             return (
               <button

@@ -95,16 +95,36 @@ export function computeRiskLevel(
 }
 
 /**
- * Extracts Course Level and Modality (TP vs HC)
+ * Extracts Course Level, Cycle (Básica vs Media) and Modality (TP vs HC vs Básica)
  */
-export function extractCourseDetails(course: string) {
-  let level = '1º Medio';
-  if (course.includes('2º') || course.includes('2°')) level = '2º Medio';
-  else if (course.includes('3º') || course.includes('3°')) level = '3º Medio';
-  else if (course.includes('4º') || course.includes('4°')) level = '4º Medio';
-
-  const modality: 'TP' | 'HC' = course.toUpperCase().includes('TP') ? 'TP' : 'HC';
-  return { level, modality };
+export function extractCourseDetails(course: string): {
+  level: string;
+  cycle: 'BÁSICA' | 'MEDIA';
+  modality: 'TP' | 'HC' | 'Básica';
+} {
+  const norm = course.trim();
+  const isBasica = norm.toLowerCase().includes('básico') || norm.toLowerCase().includes('basico');
+  
+  if (isBasica) {
+    let level = '1º Básico';
+    for (let i = 8; i >= 1; i--) {
+      if (norm.includes(`${i}º`) || norm.includes(`${i}°`)) {
+        level = `${i}º Básico`;
+        break;
+      }
+    }
+    return { level, cycle: 'BÁSICA', modality: 'Básica' };
+  } else {
+    let level = '1º Medio';
+    for (let i = 4; i >= 1; i--) {
+      if (norm.includes(`${i}º`) || norm.includes(`${i}°`)) {
+        level = `${i}º Medio`;
+        break;
+      }
+    }
+    const modality: 'TP' | 'HC' = norm.toUpperCase().includes('TP') ? 'TP' : 'HC';
+    return { level, cycle: 'MEDIA', modality };
+  }
 }
 
 /**
@@ -171,7 +191,7 @@ export function parseRiskCSV(csvContent: string): StudentRisk[] {
 
     if (studentName) {
       const id = generateStudentId(studentName, course);
-      const { level, modality } = extractCourseDetails(course);
+      const { level, cycle, modality } = extractCourseDetails(course);
       const attendance = parseAttendance(attendanceRaw);
       const generalAverage = parseGrade(avgRaw);
 
@@ -187,6 +207,7 @@ export function parseRiskCSV(csvContent: string): StudentRisk[] {
         id,
         name: studentName,
         course: course || 'Sin Curso',
+        cycle,
         level,
         modality,
         attendance,
